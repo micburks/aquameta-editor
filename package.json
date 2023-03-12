@@ -1,0 +1,25 @@
+{
+  "name": "aquameta-editor",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "scripts": {
+    "build": "webpack",
+    "move": "./move.sh && ./move.js",
+    "postbuild": "yarn move"
+  },
+  "dependencies": {
+    "monaco-editor": "0.35.0",
+    "monaco-vim": "0.3.5",
+    "ts-lit-plugin": "1.2.1"
+  },
+  "devDependencies": {
+    "aquameta-sync": "^0.1.19",
+    "css-loader": "^6.7.3",
+    "monaco-editor-webpack-plugin": "^7.0.1",
+    "postgres": "^3.3.3",
+    "style-loader": "^3.3.1",
+    "webpack": "^5.75.0",
+    "webpack-cli": "^5.0.1"
+  }
+}
