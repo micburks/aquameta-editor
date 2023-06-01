@@ -69,9 +69,10 @@ async function createBundle() {
 
 async function commitBundle() {
   console.log('bundle commit');
+  const commitString = `Automated import. Version ${monacoVersion}`;
   try {
     await sql`
-      select bundle.commit(${bundle}, 'Automated import. Version ${monacoVersion}')
+      select bundle.commit(${bundle}, ${commitString})
     `;
   } catch (e) {
     console.error(e,);
@@ -106,25 +107,12 @@ async function deleteBundleContents() {
       where b.name=${bundle};
     `;
     for (const row of rows) {
-      const id = {
-        pk_value: row.pk_value,
-        pk_column_id: {
-          name: row.pk_column_name,
-          relation_id: {
-            name: row.relation_name,
-            schema_id: {
-              name: row.schema_name,
-            }
-          }
-        }
-      };
-      console.log(id);
       await sql`
-        select bundle.stage_row_delete(${bundle}, ${id})
+        select bundle.stage_row_delete(${bundle}, ${row.schema_name}, ${row.relation_name}, ${row.pk_column_name}, ${row.pk_value})
       `;
     }
   } catch (e) {
-    console.error(e,);
+    console.error(e);
   }
   return '';
 }
