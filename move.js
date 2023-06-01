@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 
-const {importDir} = require('aquameta-sync');
-const fs = require('fs');
-const path = require('path');
-const postgres = require('postgres');
+import fs from 'fs';
+import path from 'path';
+import postgres from 'postgres';
 
+// TODO: use in bundle relase
 const monacoVersion = JSON.parse(
   fs.readFileSync('package.json', 'utf-8')
 ).dependencies["monaco-editor"];
@@ -27,79 +27,27 @@ const bundle = 'org.aquameta.ui.editor';
     await createBundle();
   } 
 
-  await widgetDependencyCss(
+  await widgetModule(
     'monaco-editor',
     fs.readFileSync(
       path.resolve('monaco-editor.css'),
       'utf-8',
-    )
+    ),
+    'css',
   );
 
   for (const file of files) {
-    const table = path.extname(file) === '.js' ? 'widget.dependency_js' : 'endpoint.resource';
     const fileWithoutVersion = file.replace(/@.*/, '');
-    /*
-    const outDir = path.join(
-      path.resolve('data'),
-      table,
-      (counter++).toString(),
-    );
-    */
-    // fs.mkdirSync(outDir, {recursive: true});
-    if (table === 'endpoint.resource') {
-      console.log('endpoint.resource?', file);
-      continue;
-      // path, mimetype_id, content
-      if (path.extname(file) !== '.ttf') {
-        console.error('not a ttf file. something went terrible wrong');
-      }
-      await endpointResource(
-        `/widget/dep/${monacoVersion}/${fileWithoutVersion}`,
-        fs.readFileSync(
-          path.join(dist, file),
-          'utf-8',
-        )
-      );
-      /*
-      fs.writeFileSync(
-        path.join(outDir, 'path'),
-        `/widget/dep/${monacoVersion}/${file}`,
-      );
-      fs.writeFileSync(
-        path.join(outDir, 'mimetype_id'),
-        // application/x-font-ttf though technically it should be font/ttf
-        // but aquameta doesn't have this mimetype yet
-        '20ef9afd-ef67-4e77-8074-7df44c7b0ddc',
-      );
-      fs.renameSync(
-        path.join(dist, file),
-        path.join(outDir, 'content'),
-      );
-      */
-    } else if (table === 'widget.dependency_js') {
-      // name, version, content
-      await widgetDependency(
+    if (path.extname(file) === '.js') {
+      // name, version, type
+      await widgetModule(
         fileWithoutVersion,
-        // file.replace(path.extname(file), ''),
         fs.readFileSync(
           path.join(dist, file),
           'utf-8',
-        )
+        ),
+        'js'
       );
-      /*
-      fs.writeFileSync(
-        path.join(outDir, 'name'),
-        file,
-      );
-      fs.writeFileSync(
-        path.join(outDir, 'version'),
-        monacoVersion,
-      );
-      fs.renameSync(
-        path.join(dist, file),
-        path.join(outDir, 'content'),
-      );
-      */
     }
   }
 
@@ -123,7 +71,7 @@ async function commitBundle() {
   console.log('bundle commit');
   try {
     await sql`
-      select bundle.commit(${bundle}, 'Automated import')
+      select bundle.commit(${bundle}, 'Automated import. Version ${monacoVersion}')
     `;
   } catch (e) {
     console.error(e,);
@@ -185,10 +133,7 @@ async function deleteMonaco() {
   console.log('delete monaco');
   try {
     await sql`
-      delete from widget.dependency_js where name like '%monaco%';
-    `;
-    await sql`
-      delete from widget.dependency_css where name like '%monaco%';
+      delete from widget.module where name like '%monaco%';
     `;
   } catch (e) {
     console.error(e,);
@@ -196,72 +141,18 @@ async function deleteMonaco() {
   return '';
 }
 
-async function endpointResource(path, content) {
-  const obj = {path, mimetype_id: "20ef9afd-ef67-4e77-8074-7df44c7b0ddc", content};
+async function widgetModule(name, content, type) {
+  const obj = {name, content, type};
   try {
     const row = await sql`
-      insert into endpoint.resource ${sql(obj)} returning id
+      insert into widget.module ${sql(obj)} returning id
     `;
     const id = row[0].id;
     await sql`
-      select bundle.tracked_row_add(${bundle}, 'endpoint', 'resource', 'id', ${id})
+      select bundle.tracked_row_add(${bundle}, 'widget', 'module', 'id', ${id})
     `;
     await sql`
-      select bundle.stage_row_add(${bundle}, 'endpoint', 'resource', 'id', ${id})
-    `;
-  } catch (e) {
-    console.error(e,);
-    console.log(path);
-  }
-  return '';
-  /*
-return `
-insert into endpoint.resource
-  (path, mimetype_id, content)
-  values ("${path}", "20ef9afd-ef67-4e77-8074-7df44c7b0ddc", "${content.replace(/"/g, '\\"')}");
-`;
-*/
-};
-
-async function widgetDependency(name, content) {
-  const obj = {name, version: monacoVersion, content};
-  try {
-    const row = await sql`
-      insert into widget.dependency_js ${sql(obj)} returning id
-    `;
-    const id = row[0].id;
-    await sql`
-      select bundle.tracked_row_add(${bundle}, 'widget', 'dependency_js', 'id', ${id})
-    `;
-    await sql`
-      select bundle.stage_row_add(${bundle}, 'widget', 'dependency_js', 'id', ${id})
-    `;
-  } catch (e) {
-    console.error(e);
-    console.log(name);
-  }
-  return '';
-  /*
-return `
-insert into widget.dependency_js
-  (name, version, content)
-  values ("${name}", "${monacoVersion}", "${content.replace(/"/g, '\\"')}");
-`;
-    */
-};
-
-async function widgetDependencyCss(name, content) {
-  const obj = {name, version: monacoVersion, content};
-  try {
-    const row = await sql`
-      insert into widget.dependency_css ${sql(obj)} returning id
-    `;
-    const id = row[0].id;
-    await sql`
-      select bundle.tracked_row_add(${bundle}, 'widget', 'dependency_css', 'id', ${id})
-    `;
-    await sql`
-      select bundle.stage_row_add(${bundle}, 'widget', 'dependency_css', 'id', ${id})
+      select bundle.stage_row_add(${bundle}, 'widget', 'module', 'id', ${id})
     `;
   } catch (e) {
     console.error(e);

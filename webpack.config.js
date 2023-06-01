@@ -1,15 +1,18 @@
 const MonacoWebpackPlugin = require('monaco-editor-webpack-plugin');
 const path = require('path');
-const fs = require('fs');
 
-const monacoVersion = JSON.parse(fs.readFileSync('package.json', 'utf-8')).dependencies["monaco-editor"];
+// TODO: Use version in bundle release
+// const fs = require('fs');
+// const monacoVersion = JSON.parse(fs.readFileSync('package.json', 'utf-8')).dependencies["monaco-editor"];
 
 module.exports = {
   entry: './index.js',
   mode: 'production',
   output: {
     path: path.resolve(__dirname, 'dist'),
-    filename: `monaco-editor@${monacoVersion}.js`,
+    // TODO: Use version in bundle release
+    // filename: `monaco-editor@${monacoVersion}.js`,
+    filename: `monaco-editor.js`,
     library: {
       type: 'module',
     },
@@ -31,7 +34,9 @@ module.exports = {
   },
   plugins: [
     new MonacoWebpackPlugin({
-      filename: `monaco-editor-[name].worker@${monacoVersion}.js`,
+      // TODO: Use version in bundle release
+      // filename: `monaco-editor-[name].worker@${monacoVersion}.js`,
+      filename: `monaco-editor-[name].worker.js`,
       publicPath: `/org.aquameta.ui.editor/widget.module/`,
       languages: ['javascript', 'typescript', 'html', 'css', 'pgsql', 'markdown'],
     })
